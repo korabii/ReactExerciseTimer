@@ -8,7 +8,7 @@ const TimerForm = ({ bundle }) => {
       <h2 className="text-xl font-semibold mb-4">Timer Settings</h2>
       <div className="mb-4">
         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="time">
-          Time (in minutes):
+          Time (seconds):
         </label>
         <input
           type="number"
@@ -32,7 +32,7 @@ const TimerForm = ({ bundle }) => {
       </div>
       <div className="mb-4">
         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="breakTime">
-          Break Time (in seconds):
+          Break (seconds):
         </label>
         <input
           type="number"

@@ -1,8 +1,4 @@
-# React + Vite
-
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Timer
+    The timer uses set interval to keep time, this means it will not be exact. the longer the time the higher the possibility the timer will be off by a second or two. If it is used in the intended 0-90 second range there will be little deviation.
+Fix
+    Use system time to figure out time passed between re-renders. (to-do - future update)
