@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 
 const Timer = ({ bundle }) => {
-   const { rounds, time, breakTime } = bundle;
+   const { settings, setSettings } = bundle;
    const [currentRound, setCurrentRound] = useState(1);
    const [timerCount, setTimerCount] = useState(0);
    const [isBreak, setIsBreak] = useState(false);
    const [isRunning, setIsRunning] = useState(false);
 
    //booleans
-   const restingTimer = (!isBreak && timerCount >= time);
-   const workingTimer = (isBreak && timerCount >= breakTime);
+   const restingTimer = (!isBreak && timerCount >= settings.time);
+   const workingTimer = (isBreak && timerCount >= settings.breakTime);
 
    // Timer logic
    useEffect(() => {
@@ -24,7 +24,7 @@ const Timer = ({ bundle }) => {
             //stop timer if max rounds reached
             if (isBreak) {
                //dont increment rounds during break
-            } else if (currentRound < rounds) {
+            } else if (currentRound < settings.rounds) {
                //incement rounds if it was a work round
                setCurrentRound(prev => prev + 1)
             } else {
@@ -61,13 +61,13 @@ const Timer = ({ bundle }) => {
    return (
       <div className="bg-white p-4 rounded shadow-md mt-4">
          <h2 className="text-xl font-semibold mb-4">Timer</h2>
-         <p>Round: {currentRound} / {rounds}</p>
+         <p>Round: {currentRound} / {settings.rounds}</p>
          <p>{isBreak ? 'Break Time' : 'Work Time'}</p>
-         <p>Time Elapsed: {timerCount.toFixed(1)} seconds of {isBreak ? breakTime : time}</p>
+         <p>Time Elapsed: {timerCount.toFixed(1)} seconds of {isBreak ? settings.breakTime : settings.time}</p>
          <div className="relative mt-2 h-4 bg-gray-200 rounded overflow-hidden">
             <div
                className={`absolute top-0 left-0 h-full ${isBreak ? "bg-red-500":"bg-green-500"}`}
-               style={{ width: `${isBreak ? (timerCount / breakTime) * 100 : (timerCount / time) * 100}%` }}>
+               style={{ width: `${isBreak ? (timerCount / settings.breakTime) * 100 : (timerCount / settings.time) * 100}%` }}>
             </div>
          </div>
          <div className="mt-4">

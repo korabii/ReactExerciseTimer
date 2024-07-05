@@ -1,7 +1,7 @@
 import React from 'react';
 
 const TimerForm = ({ bundle }) => {
-  const { rounds, setRounds, time, setTime, breakTime, setBreakTime } = bundle;
+  const { settings, setSettings } = bundle;
 
   return (
     <div className="bg-white p-4 rounded shadow-md">
@@ -13,9 +13,9 @@ const TimerForm = ({ bundle }) => {
         <input
           type="number"
           id="time"
-          value={time}
+          value={settings.time}
           className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-          onChange={(e) => setTime(Number(e.target.value))}
+          onChange={(e) => setSettings({...settings, time: e.target.value}) }
         />
       </div>
       <div className="mb-4">
@@ -25,9 +25,9 @@ const TimerForm = ({ bundle }) => {
         <input
           type="number"
           id="rounds"
-          value={rounds}
+          value={settings.rounds}
           className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-          onChange={(e) => setRounds(Number(e.target.value))}
+          onChange={(e) => setSettings({...settings, rounds: e.target.value})}
         />
       </div>
       <div className="mb-4">
@@ -37,9 +37,9 @@ const TimerForm = ({ bundle }) => {
         <input
           type="number"
           id="breakTime"
-          value={breakTime}
+          value={settings.breakTime}
           className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-          onChange={(e) => setBreakTime(Number(e.target.value))}
+          onChange={(e) => setSettings({...settings, breakTime: e.target.value})}
         />
       </div>
     </div>

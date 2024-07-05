@@ -6,17 +6,12 @@ import TimerForm from './components/TimerForm';
 
 
 function App() {
-   const [rounds, setRounds] = useState(3);
-   const [time, setTime] = useState(3);
-   const [breakTime, setBreakTime] = useState(2);
+   
+   const [settings, setSettings] = useState({rounds: 3, time: 30, breakTime: 20});
 
    const bundle = {
-      rounds,
-      setRounds,
-      time,
-      setTime,
-      breakTime,
-      setBreakTime,
+      settings,
+      setSettings
    };
 
    return (
