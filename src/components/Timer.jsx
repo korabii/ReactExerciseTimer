@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 const Timer = ({ bundle }) => {
+   // props
    const { settings } = bundle;
+   // state
    const [currentRound, setCurrentRound] = useState(1);
    const [timerCount, setTimerCount] = useState(0);
    const [isBreak, setIsBreak] = useState(false);
    const [isRunning, setIsRunning] = useState(false);
+   // refs
    const intervalRef = useRef(null);
    const lastUpdateRef = useRef(Date.now());
-
    // Booleans
    const restingTimer = (!isBreak && timerCount >= settings.time);
    const workingTimer = (isBreak && timerCount >= settings.breakTime);
@@ -16,7 +18,9 @@ const Timer = ({ bundle }) => {
    // Timer logic
    useEffect(() => {
       if (isRunning) {
+         //create new interval object if is running is true
          intervalRef.current = setInterval(() => {
+            //figure out elapsed time by getting (current time) - (last render time or time user clicked start)
             const now = Date.now();
             const elapsedTime = (now - lastUpdateRef.current) / 1000; // Convert to seconds
             lastUpdateRef.current = now;
@@ -43,14 +47,20 @@ const Timer = ({ bundle }) => {
          }, 30);
       }
 
-      // Clean up interval on component unmount or when isRunning changes
-      return () => clearInterval(intervalRef.current);
-   }, [isBreak, isRunning, timerCount]);
+      //Clean up interval on component unmount (will unmount on every re-render ) not ideal but works.
+      return () => {
+         console.log("unmount");
+         clearInterval(intervalRef.current)
+      };
+   }, [isBreak, isRunning]);
+
+
 
    // Handle start/stop button
    const handleStartStop = () => {
       setIsRunning(prev => !prev);
-      lastUpdateRef.current = Date.now(); // Reset the last update time
+      //reseting last update time here is crucial as it will re-set everytime the user starts and stops the timer/application.
+      lastUpdateRef.current = Date.now();
    };
 
    // Reset the timer
@@ -60,7 +70,6 @@ const Timer = ({ bundle }) => {
       setCurrentRound(1);
       setTimerCount(0);
       setIsBreak(false);
-      lastUpdateRef.current = Date.now(); // Reset the last update time
    };
 
    return (
