@@ -39,15 +39,13 @@ const Timer = ({ bundle }) => {
             }
 
             // Increment timer while app is in running state
-            if (isRunning) {
-               setTimerCount(prev => prev + elapsedTime);
-            }
-         }, 40);
+            setTimerCount(prev => prev + elapsedTime);
+         }, 30);
       }
 
       // Clean up interval on component unmount or when isRunning changes
       return () => clearInterval(intervalRef.current);
-   }, [isBreak, isRunning, timerCount, restingTimer, workingTimer, currentRound, settings.rounds]);
+   }, [isBreak, isRunning, timerCount]);
 
    // Handle start/stop button
    const handleStartStop = () => {
