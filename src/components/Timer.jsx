@@ -34,8 +34,8 @@ const Timer = ({ bundle }) => {
 
                // Stop timer if max rounds reached
                if (!isBreak && currentRound >= settings.rounds) {
+                  //base case
                   setIsRunning(false);
-                  clearInterval(intervalRef.current); // Stop the interval
                } else if (!isBreak) {
                   // Increment rounds if it was a work round
                   setCurrentRound(prev => prev + 1);
@@ -43,16 +43,17 @@ const Timer = ({ bundle }) => {
             }
 
             // Increment timer while app is in running state
+            // schedules the use effect to be called again after everything has finished executng, including the 30 millisecond break.
             setTimerCount(prev => prev + elapsedTime);
-         }, 30);
+         }, 27);
       }
 
-      //Clean up interval on component unmount (will unmount on every re-render ) not ideal but works.
+      //setTimerCount will cause useeffect to fire on every re-render also calling the unmount function every time, not ideal but works.
       return () => {
-         console.log("unmount");
+         //console.log("unmount");
          clearInterval(intervalRef.current)
       };
-   }, [isBreak, isRunning]);
+   }, [isRunning, timerCount]);
 
 
 
