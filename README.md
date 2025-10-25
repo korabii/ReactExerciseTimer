@@ -11,3 +11,5 @@ easier to understand if you think of it as recursion rather than a loop.
 5. next cycle repeats until isRunning is set to false, 
    i. since isRunning is the top level if statement the setTimerCount can not be called
   ii. the useEffect clean up function is called (clearing the interval), since setTimerCount wasnt called a new interval is not created and execution stops.
+
+test
