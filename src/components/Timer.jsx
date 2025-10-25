@@ -1,106 +1,198 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 const Timer = ({ bundle }) => {
-   // props
-   const { settings } = bundle;
-   // state
-   const [currentRound, setCurrentRound] = useState(1);
-   const [timerCount, setTimerCount] = useState(0);
-   const [isBreak, setIsBreak] = useState(false);
-   const [isRunning, setIsRunning] = useState(false);
-   // refs
-   const intervalRef = useRef(null);
-   const lastUpdateRef = useRef(Date.now());
-   // Booleans
-   const restingTimer = (!isBreak && timerCount >= settings.time);
-   const workingTimer = (isBreak && timerCount >= settings.breakTime);
+  const { settings } = bundle;
 
-   // Timer logic
-   useEffect(() => {
-      if (isRunning) {
-         //create new interval object if is running is true
-         intervalRef.current = setInterval(() => {
-            //figure out elapsed time by getting (current time) - (last render time or time user clicked start)
-            const now = Date.now();
-            const elapsedTime = (now - lastUpdateRef.current) / 1000; // Convert to seconds
-            lastUpdateRef.current = now;
+  const [currentRound, setCurrentRound] = useState(1);
+  const [isBreak, setIsBreak] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
+  const [timerCount, setTimerCount] = useState(0);
 
-            // When timer reaches the user-defined work or break time
-            if (restingTimer || workingTimer) {
-               // Alternate between break and work
-               setIsBreak(prev => !prev);
-               // Reset timer
-               setTimerCount(0);
+  const startTimeRef = useRef(null);
+  const requestRef = useRef(null);
 
-               // Stop timer if max rounds reached
-               if (!isBreak && currentRound >= settings.rounds) {
-                  //base case
-                  setIsRunning(false);
-               } else if (!isBreak) {
-                  // Increment rounds if it was a work round
-                  setCurrentRound(prev => prev + 1);
-               }
-            }
+  const total = isBreak ? settings.breakTime : settings.time;
+  const remaining = Math.max(total - timerCount, 0);
+  const progress = Math.min((timerCount / total) * 100, 100);
 
-            // Increment timer while app is in running state
-            // schedules the use effect to be called again after everything has finished executng, including the 30 millisecond break.
-            setTimerCount(prev => prev + elapsedTime);
-         }, 27);
+  /** Core high-accuracy timer using requestAnimationFrame */
+  const tick = () => {
+    const now = Date.now();
+    // This calculation is correct for elapsed time
+    const elapsed = (now - startTimeRef.current) / 1000; 
+    setTimerCount(elapsed);
+
+    if (elapsed >= total) {
+      handlePhaseComplete();
+      return;
+    }
+
+    requestRef.current = requestAnimationFrame(tick);
+  };
+
+  const startTimer = () => {
+    // Only start if the timer isn't already running
+    if (!requestRef.current) { 
+        startTimeRef.current = Date.now() - timerCount * 1000; 
+        requestRef.current = requestAnimationFrame(tick);
+    }
+  };
+
+  const stopTimer = () => {
+    if (requestRef.current) {
+      cancelAnimationFrame(requestRef.current);
+      requestRef.current = null; // IMPORTANT: Clear the ref
+    }
+  };
+
+  /** Handles the transition between work/break phases */
+  const handlePhaseComplete = () => {
+    // 1. Always stop the current timer loop
+    stopTimer(); 
+    setTimerCount(total); // visually complete progress
+
+    setTimeout(() => {
+      if (!isBreak) {
+        // End of WORK phase → go to BREAK
+        if (currentRound >= settings.rounds) {
+          // All rounds done - Timer finishes
+          setIsRunning(false); 
+          return;
+        }
+        // Change state to break, the useEffect below will handle starting the new timer
+        setIsBreak(true);
+      } else {
+        // End of BREAK phase → next round WORK
+        // Change state to next round and work, useEffect will handle starting
+        setIsBreak(false);
+        setCurrentRound((prev) => prev + 1);
       }
+      setTimerCount(0); // Reset count *after* state change so useEffect can react
+    }, 250); 
+  };
 
-      //setTimerCount will cause useeffect to fire on every re-render also calling the unmount function every time, not ideal but works.
-      return () => {
-         //console.log("unmount");
-         clearInterval(intervalRef.current)
-      };
-   }, [isRunning, timerCount]);
-
-
-
-   // Handle start/stop button
-   const handleStartStop = () => {
-      setIsRunning(prev => !prev);
-      //reseting last update time here is crucial as it will re-set everytime the user starts and stops the timer/application.
-      lastUpdateRef.current = Date.now();
-   };
-
-   // Reset the timer
-   const handleReset = () => {
-      clearInterval(intervalRef.current); // Clear the interval immediately
+  const handleStartStop = () => {
+    if (isRunning) {
       setIsRunning(false);
-      setCurrentRound(1);
-      setTimerCount(0);
-      setIsBreak(false);
-   };
+      stopTimer();
+    } else {
+      setIsRunning(true);
+      // Start timer immediately on click
+      // We pass the current timerCount to startTimer so it resumes from where it paused
+      startTimeRef.current = Date.now() - timerCount * 1000;
+      requestRef.current = requestAnimationFrame(tick);
+    }
+  };
 
-   return (
-      <div className="bg-white p-4 rounded shadow-md mt-4">
-         <h2 className="text-xl font-semibold mb-4">Timer</h2>
-         <p>Round: {currentRound} / {settings.rounds}</p>
-         <p>{isBreak ? 'Break Time' : 'Work Time'}</p>
-         <p>Time Elapsed: {timerCount.toFixed(2)} seconds of {isBreak ? settings.breakTime : settings.time}</p>
-         <div className="relative mt-2 h-4 bg-gray-200 rounded overflow-hidden">
-            <div
-               className={`absolute top-0 left-0 h-full ${isBreak ? "bg-red-500" : "bg-green-500"}`}
-               style={{ width: `${isBreak ? (timerCount / settings.breakTime) * 100 : (timerCount / settings.time) * 100}%` }}>
-            </div>
-         </div>
-         <div className="mt-4">
-            <button
-               className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-2"
-               onClick={handleStartStop}
+  const handleReset = () => {
+    stopTimer();
+    setIsRunning(false);
+    setIsBreak(false);
+    setTimerCount(0);
+    setCurrentRound(1);
+  };
+
+  // --- useEffect for Automatic Phase Transition ---
+  useEffect(() => {
+    if (isRunning && timerCount === 0) {
+      startTimeRef.current = Date.now();
+      requestRef.current = requestAnimationFrame(tick);
+    }
+  }, [isBreak, currentRound, isRunning, timerCount]);
+
+  // Cleanup effect
+  useEffect(() => {
+    return () => stopTimer();
+  }, []);
+  
+  // Dynamic color classes based on the current phase
+  const primaryColor = isBreak ? "text-red-500" : "text-green-500";
+  const primaryBgColor = isBreak ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600";
+  const startStopBgColor = isRunning 
+    ? "bg-amber-500 hover:bg-amber-600" // Pause uses Amber
+    : primaryBgColor; // Start uses the primary color
+
+  return (
+    // Updated container to match the TimerForm's sleek, higher-contrast look
+    <div className="flex flex-col items-center justify-center bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm mx-auto select-none">
+      
+      {/* Title */}
+      <h2 className={`text-2xl font-extrabold mb-1 ${primaryColor} tracking-tight transition-colors duration-300`}>
+        {isBreak ? "Break Time" : "Focus Time"}
+      </h2>
+      <p className="text-sm text-gray-500 mb-6">
+        Round <span className="font-semibold text-gray-700">{currentRound}</span> of {settings.rounds}
+      </p>
+
+      {/* Circular Progress */}
+      <div className="relative w-56 h-56 mb-8">
+        <svg className="absolute inset-0" viewBox="0 0 100 100">
+          {/* Background circle is slightly darker */}
+          <circle
+            className="text-gray-200"
+            stroke="currentColor"
+            strokeWidth="6"
+            fill="transparent"
+            r="45"
+            cx="50"
+            cy="50"
+          />
+          {/* Progress circle uses dynamic color */}
+          <motion.circle
+            className={primaryColor}
+            stroke="currentColor"
+            strokeWidth="6"
+            strokeLinecap="round"
+            fill="transparent"
+            r="45"
+            cx="50"
+            cy="50"
+            strokeDasharray="282.6"
+            strokeDashoffset={282.6 - (progress / 100) * 282.6}
+            animate={{ strokeDashoffset: 282.6 - (progress / 100) * 282.6 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+          />
+        </svg>
+
+        {/* Time Display */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={isBreak ? "break" : "work"}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="text-center"
+              transition={{ duration: 0.2 }}
             >
-               {isRunning ? 'Pause' : 'Start'}
-            </button>
-            <button
-               className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
-               onClick={handleReset}
-            >
-               Reset
-            </button>
-         </div>
+              <p className="text-6xl font-extrabold text-gray-800 leading-none">
+                {remaining.toFixed(1)}
+              </p>
+              <p className="text-sm font-semibold text-gray-500 mt-2">seconds remaining</p>
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </div>
-   );
+
+      {/* Buttons - Using the new primary/amber colors and full-width styling */}
+      <div className="flex gap-4 w-full px-4">
+        <button
+          onClick={handleStartStop}
+          // Dynamic button color matching the phase/pause state
+          className={`flex-1 py-3 rounded-xl text-white font-bold shadow-md transition-all duration-200 uppercase tracking-wider ${startStopBgColor}`}
+        >
+          {isRunning ? "Pause" : "Start"}
+        </button>
+        <button
+          onClick={handleReset}
+          className="flex-1 py-3 rounded-xl bg-gray-500 hover:bg-gray-700 text-white font-bold shadow-md transition-all duration-200 uppercase tracking-wider"
+        >
+          Reset
+        </button>
+      </div>
+    </div>
+  );
 };
 
 export default Timer;
