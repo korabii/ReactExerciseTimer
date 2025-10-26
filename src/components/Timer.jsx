@@ -1,15 +1,44 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
+/** 🎵 Beep sound with Safari compatibility */
+let audioCtx = null;
+
+const playBeep = (frequency = 800, duration = 200) => {
+  try {
+    // Create a shared audio context if not already created
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    // Safari may suspend the context — resume if needed
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume();
+    }
+
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    oscillator.type = "sine";
+    oscillator.frequency.value = frequency;
+    gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + duration / 1000);
+  } catch (e) {
+    console.warn("AudioContext not supported or blocked:", e);
+  }
+};
+
+
 /**
- * Helper component to keep the main Timer component's JSX clean.
- * It's disabled when the timer is running.
- *
- * STYLING CHANGE: Reduced padding (px-2 py-1.5) and centered text
- * to make the inputs smaller and neater.
+ * Helper component for timer settings input.
  */
 const SettingInput = ({ label, value, onChange, disabled }) => (
-  <div className="flex flex-col flex-1 min-w-0"> 
+  <div className="flex flex-col flex-1 min-w-0">
     <label
       htmlFor={label}
       className="text-sm font-medium text-gray-500 mb-1 truncate"
@@ -28,12 +57,9 @@ const SettingInput = ({ label, value, onChange, disabled }) => (
   </div>
 );
 
-
 const Timer = ({ bundle }) => {
-  // Use 'initialSettings' from props to set the *initial* state
   const { settings: initialSettings } = bundle;
 
-  // --- New State for Timer Settings ---
   const [exerciseTime, setExerciseTime] = useState(
     initialSettings?.time || 30
   );
@@ -41,7 +67,6 @@ const Timer = ({ bundle }) => {
     initialSettings?.breakTime || 10
   );
   const [rounds, setRounds] = useState(initialSettings?.rounds || 4);
-  // --- End New State ---
 
   const [currentRound, setCurrentRound] = useState(1);
   const [isBreak, setIsBreak] = useState(false);
@@ -69,62 +94,57 @@ const Timer = ({ bundle }) => {
     requestRef.current = requestAnimationFrame(tick);
   };
 
-  // --- This function is NOT USED directly to start/stop the timer loop ---
-  // It's used as a safety function inside handlePhaseComplete
   const stopTimer = () => {
     if (requestRef.current) {
       cancelAnimationFrame(requestRef.current);
-      requestRef.current = null; // IMPORTANT: Clear the ref
+      requestRef.current = null;
     }
   };
 
   /** Handles the transition between work/break phases */
   const handlePhaseComplete = () => {
-    // 1. Always stop the current timer loop
     stopTimer();
     setTimerCount(total); // visually complete progress
+
+    // 🎵 NEW: Play a beep when a phase completes
+    if (!isBreak) {
+      playBeep(600, 200); // lower tone (end of exercise)
+    } else {
+      playBeep(1000, 300); // higher tone (end of break)
+    }
 
     setTimeout(() => {
       if (!isBreak) {
         // End of WORK phase → go to BREAK
         if (currentRound >= rounds) {
           // All rounds done - Timer finishes
-          setIsRunning(false); // This will stop the useEffect from starting a new timer
+          setIsRunning(false);
+          playBeep(1200, 500); // 🎵 final long beep
           return;
         }
-        // Change state to break, the useEffect below will handle starting the new timer
         setIsBreak(true);
       } else {
         // End of BREAK phase → next round WORK
-        // Change state to next round and work, useEffect will handle starting
         setIsBreak(false);
         setCurrentRound((prev) => prev + 1);
       }
-      setTimerCount(0); // Reset count *after* state change so useEffect can react
+      setTimerCount(0);
     }, 250);
   };
 
-  // --- FIX 1: Simplified handleStartStop ---
-  // This function's ONLY job is to toggle the isRunning state.
-  // The useEffect hook will see this change and handle the timer logic.
   const handleStartStop = () => {
     setIsRunning(!isRunning);
   };
 
   const handleReset = () => {
-    stopTimer(); // Manually stop any running timer
+    stopTimer();
     setIsRunning(false);
     setIsBreak(false);
     setTimerCount(0);
     setCurrentRound(1);
-    // Note: This does NOT reset the settings fields, only the timer progress.
   };
 
-  // --- FIX 2: Corrected useEffect for Timer Lifecycle ---
-  // This effect now controls ALL starting, stopping, and resuming
   useEffect(() => {
-    // This cleanup function runs whenever a dependency changes, or on unmount.
-    // It's a safety net to prevent duplicate timer loops.
     const cleanup = () => {
       if (requestRef.current) {
         cancelAnimationFrame(requestRef.current);
@@ -132,46 +152,30 @@ const Timer = ({ bundle }) => {
       }
     };
 
-    // Make sure any existing loop is cleared before we decide to start a new one
     cleanup();
 
     if (isRunning) {
-      // Timer should be running.
       if (timerCount === 0) {
-        // We are starting a *new* phase (from 0)
         startTimeRef.current = Date.now();
       } else {
-        // We are *resuming* from a pause
         startTimeRef.current = Date.now() - timerCount * 1000;
       }
-
-      // Start the animation frame loop
       requestRef.current = requestAnimationFrame(tick);
-    } else {
-      // isRunning is false, so the timer should be stopped/paused.
-      // The cleanup() function above already handled this.
     }
 
-    // The component will re-run this effect if any of these change.
-    // 'timerCount' has been (correctly) removed from this array.
-    return cleanup; // This is the final cleanup on unmount
+    return cleanup;
   }, [isRunning, isBreak, currentRound]);
-  
-  // Note: The empty useEffect for cleanup on unmount is now
-  // handled by the return function in the main useEffect above.
 
-  // Dynamic color classes based on the current phase
   const primaryColor = isBreak ? "text-red-500" : "text-green-500";
   const primaryBgColor = isBreak
     ? "bg-red-500 hover:bg-red-600"
     : "bg-green-500 hover:bg-green-600";
   const startStopBgColor = isRunning
-    ? "bg-amber-500 hover:bg-amber-600" // Pause uses Amber
-    : primaryBgColor; // Start uses the primary color
+    ? "bg-amber-500 hover:bg-amber-600"
+    : primaryBgColor;
 
   return (
     <div className="flex flex-col items-center justify-center bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm mx-auto select-none">
-      {/* Title */}
       <h2
         className={`text-2xl font-extrabold mb-1 ${primaryColor} tracking-tight transition-colors duration-300`}
       >
@@ -182,11 +186,9 @@ const Timer = ({ bundle }) => {
         of {rounds}
       </p>
 
-      {/* --- STYLING CHANGE: gap-3 changed to gap-2 (already done) --- */}
+      {/* Settings */}
       <div className="w-full px-4 mb-6">
-        {/* The containing flex-row will now correctly distribute space 
-            because the children use flex-1 */}
-        <div className="flex flex-col sm:flex-row gap-2 min-w-0">
+        <div className="flex flex-col sm:flex-row gap-2 min-w-0 w-full overflow-hidden">
           <SettingInput
             label="Exercise (s)"
             value={exerciseTime}
@@ -207,7 +209,6 @@ const Timer = ({ bundle }) => {
           />
         </div>
       </div>
-      {/* --- End Settings Fields --- */}
 
       {/* Circular Progress */}
       <div className="relative w-56 h-56 mb-8">
