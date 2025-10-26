@@ -7,3 +7,7 @@ For example, when the input fields began losing focus after every keystroke, it 
 
 This experience showed that while AI-assisted coding is powerful for rapid prototyping, it’s not yet reliable for long-term maintenance or fine-tuning complex functionality.
 Ironically, this is an app I could have built in a single day manually, but it took two full days using Vibe Coding, largely due to repeated debugging cycles and model limitations.
+
+
+visit the following link to try out the app.
+https://victorious-field-02900e810.3.azurestaticapps.net
